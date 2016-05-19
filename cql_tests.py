@@ -27,10 +27,10 @@ from tools.metadata_wrapper import (UpdatingClusterMetadataWrapper,
 
 class CQLTester(Tester):
 
-    def prepare(self, ordered=False, create_keyspace=True, use_cache=False,
+    def prepare(self, ordered=False, create_keyspace=True, use_cache=False, cluster=None,
                 nodes=1, rf=1, protocol_version=None, user=None, password=None,
                 start_rpc=False, **kwargs):
-        cluster = self.cluster
+        cluster = cluster or self.cluster
 
         if ordered:
             cluster.set_partitioner("org.apache.cassandra.dht.ByteOrderedPartitioner")
@@ -638,6 +638,44 @@ class MiscellaneousCQLTester(CQLTester):
             result = session.execute(explicit_prepared.bind(None))
             self.assertEqual(result, [(0, 0, 0, None)])
 
+    def prepared_statement_invalidation_test_multiple_clients(self):
+        session1 = self.prepare()
+        node = self.cluster.nodelist()[0]
+        session2 = self.patient_cql_connection(node)
+        session2.execute("USE ks")
+        session1.execute("CREATE TABLE simpletable (a int PRIMARY KEY, b int, c int);")
+        session1.execute("INSERT INTO simpletable (a,b,c) VALUES (1,2,3)")
+        session1.execute("INSERT INTO simpletable (a,b,c) VALUES (4,5,6)")
+
+        prepared1 = session1.prepare("SELECT * FROM simpletable")
+        prepared2 = session2.prepare("SELECT * FROM simpletable")
+
+        result1 = session1.execute(prepared1.bind(None))
+        result2 = session2.execute(prepared2.bind(None))
+        for res in [result1, result2]:
+            self.assertEqual(res, [(1,2,3),
+                                      (4,5,6)])
+
+        session1.execute("ALTER TABLE simpletable ADD d int")
+        session1.execute("INSERT INTO simpletable (a,b,c, d) VALUES (4,5,6,7)")
+
+        result1 = session1.execute(prepared1.bind(None))
+        result2 = session2.execute(prepared2.bind(None))
+
+        for res in [result1, result2]:
+            self.assertEqual(res, [(1,2,3,None),
+                                   (4,5,6,7)])
+
+        session.execute("ALTER TABLE simpletable ADD e int")
+        session.execute("INSERT INTO simpletable (a,b,c,d,e) VALUES (4,5,6,7,8)");
+
+        result1 = session1.execute(prepared1.bind(None))
+        result2 = session2.execute(prepared2.bind(None))
+
+        for res in [result1, result2]:
+            self.assertEqual(res, [(1,2,3,None,None),
+                                   (4,5,6,7,8)])
+    @freshCluster()
     def range_slice_test(self):
         """
         Regression test for CASSANDRA-1337:
