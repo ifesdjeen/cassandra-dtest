@@ -162,28 +162,29 @@ class TestAuth(Tester):
         session.execute("CREATE USER cathy WITH PASSWORD '12345' NOSUPERUSER")
         session.execute("CREATE USER dave WITH PASSWORD '12345' SUPERUSER")
 
-        rows = list(session.execute("LIST USERS"))
-        self.assertEqual(5, len(rows))
-        # {username: isSuperuser} dict.
-        users = dict([(r[0], r[1]) for r in rows])
+        list_users = session.prepare("LIST USERS")
+        for rows in [list(session.execute(list_users)), list(session.execute("LIST USERS"))]:
+            self.assertEqual(5, len(rows))
+            # {username: isSuperuser} dict.
+            users = dict([(r[0], r[1]) for r in rows])
 
-        self.assertTrue(users['cassandra'])
-        self.assertFalse(users['alex'])
-        self.assertTrue(users['bob'])
-        self.assertFalse(users['cathy'])
-        self.assertTrue(users['dave'])
+            self.assertTrue(users['cassandra'])
+            self.assertFalse(users['alex'])
+            self.assertTrue(users['bob'])
+            self.assertFalse(users['cathy'])
+            self.assertTrue(users['dave'])
 
-        self.get_session(user='dave', password='12345')
-        rows = list(session.execute("LIST USERS"))
-        self.assertEqual(5, len(rows))
-        # {username: isSuperuser} dict.
-        users = dict([(r[0], r[1]) for r in rows])
+            self.get_session(user='dave', password='12345')
+            rows = list(session.execute("LIST USERS"))
+            self.assertEqual(5, len(rows))
+            # {username: isSuperuser} dict.
+            users = dict([(r[0], r[1]) for r in rows])
 
-        self.assertTrue(users['cassandra'])
-        self.assertFalse(users['alex'])
-        self.assertTrue(users['bob'])
-        self.assertFalse(users['cathy'])
-        self.assertTrue(users['dave'])
+            self.assertTrue(users['cassandra'])
+            self.assertFalse(users['alex'])
+            self.assertTrue(users['bob'])
+            self.assertFalse(users['cathy'])
+            self.assertTrue(users['dave'])
 
     @since('2.2')
     def handle_corrupt_role_data_test(self):
