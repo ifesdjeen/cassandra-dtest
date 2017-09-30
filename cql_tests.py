@@ -29,7 +29,7 @@ class CQLTester(Tester):
 
     def prepare(self, ordered=False, create_keyspace=True, use_cache=False,
                 nodes=1, rf=1, protocol_version=None, user=None, password=None,
-                start_rpc=False, **kwargs):
+                start_rpc=False, no_compact=False):
         cluster = self.cluster
 
         if ordered:
@@ -51,7 +51,7 @@ class CQLTester(Tester):
             cluster.populate(nodes).start(wait_for_binary_proto=True)
         node1 = cluster.nodelist()[0]
 
-        session = self.patient_cql_connection(node1, protocol_version=protocol_version, user=user, password=password)
+        session = self.patient_cql_connection(node1, protocol_version=protocol_version, user=user, password=password, no_compact=no_compact)
         if create_keyspace:
             create_ks(session, 'ks', rf)
         return session

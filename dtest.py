@@ -456,7 +456,7 @@ class Tester(TestCase):
                                     protocol_version, port=port, ssl_opts=ssl_opts, load_balancing_policy=wlrr, **kwargs)
 
     def _create_session(self, node, keyspace, user, password, compression, protocol_version,
-                        port=None, ssl_opts=None, execution_profiles=None, **kwargs):
+                        port=None, ssl_opts=None, execution_profiles=None, no_compact=False, **kwargs):
         node_ip = get_ip_from_node(node)
         if not port:
             port = get_port_from_node(node)
@@ -478,6 +478,7 @@ class Tester(TestCase):
                             protocol_version=protocol_version,
                             port=port,
                             ssl_options=ssl_opts,
+                            no_compact=no_compact,
                             connect_timeout=10,
                             allow_beta_protocol_version=True,
                             execution_profiles=profiles)
@@ -491,7 +492,7 @@ class Tester(TestCase):
 
     def patient_cql_connection(self, node, keyspace=None,
                                user=None, password=None, timeout=30, compression=True,
-                               protocol_version=None, port=None, ssl_opts=None, **kwargs):
+                               protocol_version=None, port=None, ssl_opts=None, no_compact=False, **kwargs):
         """
         Returns a connection after it stops throwing NoHostAvailables due to not being ready.
 
@@ -514,6 +515,7 @@ class Tester(TestCase):
                 port=port,
                 ssl_opts=ssl_opts,
                 bypassed_exception=NoHostAvailable,
+                no_compact=no_compact,
                 **kwargs
             )
 
