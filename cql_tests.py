@@ -698,6 +698,54 @@ class MiscellaneousCQLTester(CQLTester):
                    ",".join(map(lambda i: "c_{}".format(i), range(width))) +
                    " FROM very_wide_table", [[i for i in range(width)]])
 
+    @freshCluster()
+    def drop_compact_storage_flag_test(self):
+        """
+        Test for CASSANDRA-10857, verifying the schema change
+        distribution across the other nodes.
+
+        """
+
+        cluster = self.cluster
+
+        cluster.populate(3).start()
+        node1 = cluster.nodelist()[0]
+        node2 = cluster.nodelist()[1]
+        node3 = cluster.nodelist()[2]
+        time.sleep(0.2)
+
+        session1 = self.patient_cql_connection(node1)
+        session2 = self.patient_cql_connection(node2)
+        session3 = self.patient_cql_connection(node3)
+        self.create_ks(session1, 'ks', 3)
+        sessions = [session1, session2, session3]
+
+        for session in sessions:
+            session.set_keyspace('ks')
+
+        session1.execute("""
+            CREATE TABLE test_drop_compact_storage (k int PRIMARY KEY, s1 int) WITH COMPACT STORAGE;
+        """)
+        time.sleep(1)
+
+        session1.execute("INSERT INTO test_drop_compact_storage (k, s1) VALUES (1,1)")
+        session1.execute("INSERT INTO test_drop_compact_storage (k, s1) VALUES (2,2)")
+        session1.execute("INSERT INTO test_drop_compact_storage (k, s1) VALUES (3,3)")
+
+        for session in sessions:
+            res = session.execute("SELECT * from test_drop_compact_storage")
+            self.assertEqual(rows_to_list(res), [[1, 1],
+                                                 [2, 2],
+                                                 [3, 3]])
+
+        session1.execute("ALTER TABLE test_drop_compact_storage DROP COMPACT STORAGE")
+
+        for session in sessions:
+            assert_all(session, "SELECT * from test_drop_compact_storage",
+                       [[1, None, 1, None],
+                        [2, None, 2, None],
+                        [3, None, 3, None]])
+
 
 @since('3.2')
 class AbortedQueryTester(CQLTester):
