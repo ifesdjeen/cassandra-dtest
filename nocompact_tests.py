@@ -27,6 +27,7 @@ from tools.metadata_wrapper import (UpdatingClusterMetadataWrapper,
 
 from cql_tests import CQLTester
 
+@since('3.0.16', max_version='3.x')
 class NoCompactStorageTest(CQLTester):
     def test_sparse_compact(self):
         session = self.prepare(nodes=2, rf=2)
